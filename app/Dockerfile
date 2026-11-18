@@ -54,11 +54,15 @@ COPY --from=source /src/docker/supervisord.conf /etc/supervisor/conf.d/worldmoni
 COPY --from=source /src/docker/entrypoint.sh /app/entrypoint.sh
 COPY --from=source /src/docker/render-nginx-realip.mjs /app/render-nginx-realip.mjs
 COPY --from=source /src/docker/validate-session-secret.mjs /app/validate-session-secret.mjs
+COPY healthz.conf /tmp/healthz.conf
 # Railway wrapper: also listen on IPv6 so the other services can reach the app
-# over Railway's private network (the build fails if upstream moves the line).
+# over Railway's private network, and add /healthz (the build fails if
+# upstream moves the line).
 RUN grep -q '^    listen 8080;$' /etc/nginx/nginx.conf.template \
- && sed -i 's/^    listen 8080;$/    listen 8080;\n    listen [::]:8080;/' /etc/nginx/nginx.conf.template \
+ && sed -i -e '/^    listen 8080;$/r /tmp/healthz.conf' -e 's/^    listen 8080;$/    listen 8080;\n    listen [::]:8080;/' /etc/nginx/nginx.conf.template \
  && grep -q 'listen \[::\]:8080;' /etc/nginx/nginx.conf.template \
+ && grep -q 'location = /healthz' /etc/nginx/nginx.conf.template \
+ && rm /tmp/healthz.conf \
  && chmod +x /app/entrypoint.sh \
  && chown -R appuser:appgroup /app /tmp/nginx-client-body /tmp/nginx-proxy \
     /tmp/nginx-fastcgi /tmp/nginx-uwsgi /tmp/nginx-scgi /var/log/supervisor \
