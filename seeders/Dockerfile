@@ -24,5 +24,6 @@ COPY run.sh /app/run.sh
 RUN chmod +x /app/run.sh
 ENV NODE_OPTIONS="--dns-result-order=ipv4first" \
     SEED_INTERVAL_SECONDS=1800 \
-    SEED_TIMEOUT=300
+    SEED_TIMEOUT=300 \
+    SEED_PARALLEL=4
 CMD ["/app/run.sh"]
