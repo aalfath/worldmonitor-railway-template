@@ -3,17 +3,13 @@
 # Upstream publishes no release-tagged image of the self-hosted stack
 # (ghcr.io/koala73/worldmonitor:<version> is the cloud-proxy frontend only),
 # so we build from source at a fixed commit.
-ARG NODE_IMAGE=node:24-alpine@sha256:feb76650b7195319268c59cb2d419c732d6c499b13bf5296f16ab59eb1f0a4f3
-
-FROM ${NODE_IMAGE} AS source
+FROM node:24-alpine@sha256:feb76650b7195319268c59cb2d419c732d6c499b13bf5296f16ab59eb1f0a4f3 AS source
 # World Monitor v2.11.8 = commit de602d000d9e10e7da651884bb589d2ad55f3593
 ARG WM_COMMIT=de602d000d9e10e7da651884bb589d2ad55f3593
-RUN apk add --no-cache git \
- && git init -q /src && cd /src \
- && git fetch -q --depth 1 https://github.com/koala73/worldmonitor.git "$WM_COMMIT" \
- && git checkout -q FETCH_HEAD && rm -r .git
+RUN mkdir /src && cd /src \
+ && wget -q -O- "https://codeload.github.com/koala73/worldmonitor/tar.gz/$WM_COMMIT" | tar xz --strip-components=1
 
-FROM ${NODE_IMAGE} AS builder
+FROM node:24-alpine@sha256:feb76650b7195319268c59cb2d419c732d6c499b13bf5296f16ab59eb1f0a4f3 AS builder
 WORKDIR /app
 ENV npm_config_install_links=true
 COPY --from=source /src/ ./
@@ -25,13 +21,13 @@ RUN npm run build:pro
 RUN npx tsc && npx vite build
 RUN test -s dist/pro/index.html && test -s dist/pro/welcome.html
 
-FROM ${NODE_IMAGE} AS runtime-deps
+FROM node:24-alpine@sha256:feb76650b7195319268c59cb2d419c732d6c499b13bf5296f16ab59eb1f0a4f3 AS runtime-deps
 WORKDIR /app
 COPY --from=source /src/docker/runtime-package.json ./package.json
 COPY --from=source /src/docker/runtime-package-lock.json ./package-lock.json
 RUN npm ci --omit=dev --omit=optional --ignore-scripts
 
-FROM ${NODE_IMAGE} AS final
+FROM node:24-alpine@sha256:feb76650b7195319268c59cb2d419c732d6c499b13bf5296f16ab59eb1f0a4f3 AS final
 RUN apk add --no-cache nginx supervisor gettext && \
     mkdir -p /tmp/nginx-client-body /tmp/nginx-proxy /tmp/nginx-fastcgi \
              /tmp/nginx-uwsgi /tmp/nginx-scgi /var/log/supervisor && \

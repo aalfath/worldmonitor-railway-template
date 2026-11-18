@@ -7,7 +7,7 @@ INTERVAL="${SEED_INTERVAL_SECONDS:-1800}"
 
 # Wait for the redis-rest proxy (401 without the token, 200 with it).
 i=0
-until curl -fsS -o /dev/null -H "Authorization: Bearer $UPSTASH_REDIS_REST_TOKEN" "$UPSTASH_REDIS_REST_URL/ping"; do
+until node -e "fetch(process.env.UPSTASH_REDIS_REST_URL+'/ping',{headers:{Authorization:'Bearer '+process.env.UPSTASH_REDIS_REST_TOKEN}}).then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"; do
   i=$((i + 1))
   [ "$i" -ge 60 ] && { echo "[seeders] redis-rest still unreachable, running anyway"; break; }
   sleep 5

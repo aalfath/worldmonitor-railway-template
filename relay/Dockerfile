@@ -2,18 +2,14 @@
 # loops), from the pinned upstream release commit. Upstream's Dockerfile.relay
 # copies a hand-picked subset of scripts/; we keep all of scripts/, shared/ and
 # data/ so a version bump can't miss a newly needed file.
-ARG NODE_IMAGE=node:24-alpine@sha256:feb76650b7195319268c59cb2d419c732d6c499b13bf5296f16ab59eb1f0a4f3
-
-FROM ${NODE_IMAGE} AS source
+FROM node:24-alpine@sha256:feb76650b7195319268c59cb2d419c732d6c499b13bf5296f16ab59eb1f0a4f3 AS source
 # World Monitor v2.11.8 = commit de602d000d9e10e7da651884bb589d2ad55f3593
 ARG WM_COMMIT=de602d000d9e10e7da651884bb589d2ad55f3593
-RUN apk add --no-cache git \
- && git init -q /src && cd /src \
- && git fetch -q --depth 1 https://github.com/koala73/worldmonitor.git "$WM_COMMIT" \
- && git checkout -q FETCH_HEAD && rm -r .git \
+RUN mkdir /src && cd /src \
+ && wget -q -O- "https://codeload.github.com/koala73/worldmonitor/tar.gz/$WM_COMMIT" | tar xz --strip-components=1 \
  && node scripts/generate-inventory-facts.mjs
 
-FROM ${NODE_IMAGE}
+FROM node:24-alpine@sha256:feb76650b7195319268c59cb2d419c732d6c499b13bf5296f16ab59eb1f0a4f3
 RUN apk add --no-cache curl
 WORKDIR /app
 COPY --from=source /src/scripts/package.json /src/scripts/package-lock.json ./scripts/
