@@ -14,6 +14,12 @@ WORKDIR /app
 ENV npm_config_install_links=true
 COPY --from=source /src/ ./
 RUN npm ci --ignore-scripts
+# The SEO corpus step refuses a release's frozen "live pulse" snapshot once it is
+# more than 10 days old, so a pinned release stops building after 10 days.
+# A self-hosted build always uses the release's own snapshot: lift that limit
+# (the build fails here if upstream renames the constant).
+RUN grep -q '^export const MAX_LIVE_PULSE_SNAPSHOT_AGE_DAYS = 10;$' scripts/build-crawlable-corpus.mjs \
+ && sed -i 's/^export const MAX_LIVE_PULSE_SNAPSHOT_AGE_DAYS = 10;$/export const MAX_LIVE_PULSE_SNAPSHOT_AGE_DAYS = 36500;/' scripts/build-crawlable-corpus.mjs
 RUN npm run build:crawlable-corpus && npm run build:sitemap
 RUN node scripts/generate-inventory-facts.mjs
 RUN node docker/build-handlers.mjs
